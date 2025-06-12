@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dot and Box Game</title>
+  <!-- Animate.css for pulse -->
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <style>
+    /* ====== আপনার আগের CSS একদম অপরিবর্তিত ====== */
+    body { font-family: Arial, sans-serif; text-align: center; margin: 0; background-color: #121212; color: #fff; }
+    h1 { margin-top: 20px; }
+    #game-board { display: grid; gap: 5px; margin: 20px auto; width: 350px; }
+    .dot { width: 12px; height: 12px; background: #fff; border-radius: 50%; }
+    .line { background: #444; cursor: pointer; transition: background-color .2s; }
+    .line.horizontal { height: 6px; width: 60px; }
+    .line.vertical   { height: 60px; width: 6px; }
+    .line.active     { /* overridden via JS */ }
+    .box { width: 60px; height: 60px; background: #2a2a2a; display:flex; align-items:center; justify-content:center; font-size:1.2em; font-weight:bold; color:#fff; }
+    .player-1 { background:#4a90e2; }
+    .player-2 { background:#e94e77; }
+    #status { margin:20px 0; font-size:1.5em; font-weight:bold; display:inline-block; padding:10px 20px; border-radius:5px; }
+    .blue-turn { background:#4a90e2; color:white; }
+    .red-turn  { background:#e94e77; color:white; }
+    #winner-message { margin:20px 0; font-size:1.5em; font-weight:bold; color:#0f0; }
+    #restart { margin-top:20px; padding:10px 20px; font-size:16px; background:#555; border:none; color:#fff; cursor:pointer; border-radius:5px; }
+    #restart:hover { background:#777; }
+
+    /* ====== Waiting for players Modal ====== */
+    #waitingOverlay {
+      position: fixed; inset:0; background:rgba(0,0,0,0.7);
+      display: flex; flex-direction:column; align-items:center; justify-content:center;
+      z-index:2000; visibility:hidden;
+    }
+    #waitingOverlay.visible { visibility: visible; }
+    #waitingOverlay .modal {
+      background:#2a2a3d; color:#e0e0e0; border-radius:12px; padding:1.5rem; text-align:center;
+    }
+    .spinner {
+      margin:1rem auto; width:40px; height:40px;
+      border:4px solid #444; border-top-color:#00bfff; border-radius:50%;
+      animation:spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform:rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <h1>Dot and Box Game</h1>
+  <div id="status" class="animate__animated animate__pulse blue-turn">Waiting to start…</div>
+  <div id="winner-message"></div>
+  <div id="game-board"></div>
+  <button id="restart">Restart Game</button>
+
+  <!-- Waiting Modal -->
+  <div id="waitingOverlay">
+    <div class="modal">
+      <h2>Waiting for other players…</h2>
+      <div class="spinner"></div>
+      <p>If no one joins in 12 seconds, you will play with bot(s).</p>
+    </div>
+  </div>
+
+  <script>
+    // ====== Firebase Config ======
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_AUTH_DOMAIN",
+      databaseURL: "YOUR_DB_URL",
+      projectId: "YOUR_PROJECT_ID",
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // ====== State ======
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomId = urlParams.get('room');
+    const boardSize = 5;
+    let currentPlayer = 1;
+    let scores = {1:0,2:0};
+    let lines = new Set();
+    let players = [];      // [{ key, name, isBot }]
+    let myIndex = null;    // 0 or 1 (or up to 3 for 4-player)
+    let mode = 2;          // default 2 players
+
+    const gameBoard = document.getElementById("game-board");
+    const status    = document.getElementById("status");
+    const winnerMessage = document.getElementById("winner-message");
+    const restartBtn    = document.getElementById("restart");
+    const waitingOverlay= document.getElementById("waitingOverlay");
+
+    // ====== Build Board UI ======
+    function createBoard() {
+      const template = Array(boardSize*2-1).fill('auto').join(' ');
+      gameBoard.style.gridTemplateColumns = template;
+      gameBoard.innerHTML = '';
+      for (let r=0; r<boardSize*2-1; r++) {
+        for (let c=0; c<boardSize*2-1; c++) {
+          if (r%2===0 && c%2===0) {
+            const dot = document.createElement('div'); dot.className='dot';
+            gameBoard.appendChild(dot);
+          } else if (r%2===0 || c%2===0) {
+            const line = document.createElement('div');
+            line.className = 'line ' + (r%2===0?'horizontal':'vertical');
+            line.dataset.key = `${r}-${c}`;
+            line.addEventListener('click', ()=>onLineClick(r,c));
+            gameBoard.appendChild(line);
+          } else {
+            const box = document.createElement('div');
+            box.className='box';
+            box.dataset.key = `${r}-${c}`;
+            gameBoard.appendChild(box);
+          }
+        }
+      }
+    }
+
+    // ====== Initialize Room ======
+    async function init() {
+      // মোড প্যারামিটারে 4-player হলে সেট
+      if (urlParams.get('mode')==='4') mode = 4;
+      // Join room
+      const playersRef = db.ref(`rooms/${roomId}/players`);
+      // add self
+      const pushRef = playersRef.push();
+      await pushRef.set({ isBot:false, joinedAt:Date.now() });
+      const myKey = pushRef.key;
+
+      // listen players
+      playersRef.on('value', snap=>{
+        const data = snap.val()||{};
+        players = Object.entries(data).map(([k,v])=>({key:k,isBot:v.isBot}));
+        // determine my index
+        myIndex = players.findIndex(p=>p.key===myKey);
+        // if enough, start game
+        if (players.length===mode) startGame();
+      });
+
+      // 12s timeout for bots
+      setTimeout(async ()=>{
+        if (players.length<mode) {
+          for (let i=players.length; i<mode; i++) {
+            await playersRef.push({ isBot:true, joinedAt:Date.now() });
+          }
+          startGame();
+        }
+      }, 12000);
+
+      // show waiting modal
+      waitingOverlay.classList.add('visible');
+    }
+
+    // ====== Start Game ======
+    function startGame() {
+      waitingOverlay.classList.remove('visible');
+      createBoard();
+      status.textContent = `Player ${currentPlayer}'s turn`;
+      status.className = 'animate__animated animate__pulse ' + (currentPlayer===1?'blue-turn':'red-turn');
+      // listen moves
+      db.ref(`rooms/${roomId}/moves`).on('child_added', snap=>{
+        const { r, c, player } = snap.val();
+        applyLine(r,c,player,false);
+      });
+      // listen box claims
+      db.ref(`rooms/${roomId}/claims`).on('child_added', snap=>{
+        const { r, c, player } = snap.val();
+        applyBox(r,c,player,false);
+      });
+    }
+
+    // ====== Line Click Handler ======
+    async function onLineClick(r,c) {
+      // only your turn and if not already drawn
+      if (currentPlayer !== myIndex+1) return;
+      const key = `${r}-${c}`;
+      if (lines.has(key)) return;
+      // push to DB
+      await db.ref(`rooms/${roomId}/moves`).push({ r, c, player: currentPlayer });
+      // local apply
+      applyLine(r,c,currentPlayer,true);
+    }
+
+    // ====== Apply Line ======
+    function applyLine(r,c,player,shouldSwitch) {
+      const key = `${r}-${c}`;
+      if (lines.has(key)) return;
+      lines.add(key);
+      const el = document.querySelector(`.line[data-key="${key}"]`);
+      el.classList.add('active');
+      el.style.backgroundColor = player===1? '#4a90e2':'#e94e77';
+      // check boxes around
+      const madeBox = checkForBoxes(r,c,player);
+      if (shouldSwitch && !madeBox) {
+        currentPlayer = currentPlayer===1?2:1;
+        updateStatus();
+      }
+      // check end
+      if (scores[1]+scores[2] === (boardSize-1)*(boardSize-1)) {
+        finishGame();
+      }
+    }
+
+    // ====== Check and Claim Boxes ======
+    function checkForBoxes(r,c,player) {
+      let any=false;
+      const check = (rr,cc)=>{
+        const k = `${rr}-${cc}`;
+        if (lines.has(`${rr-1}-${cc}`) && lines.has(`${rr+1}-${cc}`)
+         && lines.has(`${rr}-${cc-1}`) && lines.has(`${rr}-${cc+1}`)) {
+          const boxEl = document.querySelector(`.box[data-key="${k}"]`);
+          if (!boxEl.classList.contains('player-1') && !boxEl.classList.contains('player-2')) {
+            // push to DB
+            db.ref(`rooms/${roomId}/claims`).push({ r:rr, c:cc, player });
+            applyBox(rr,cc,player,true);
+            any = true;
+          }
+        }
+      };
+      if (r%2===0) { check(r-1,c); check(r+1,c); }
+      else        { check(r,c-1); check(r,c+1); }
+      return any;
+    }
+
+    // ====== Apply Box ======
+    function applyBox(r,c,player,fromLocal) {
+      const key = `${r}-${c}`;
+      const box = document.querySelector(`.box[data-key="${key}"]`);
+      box.classList.add(player===1?'player-1':'player-2');
+      box.textContent = player;
+      scores[player]++;
+    }
+
+    // ====== Update Status ======
+    function updateStatus() {
+      status.textContent = `Player ${currentPlayer}'s turn`;
+      status.className = 'animate__animated animate__pulse ' +
+        (currentPlayer===1?'blue-turn':'red-turn');
+    }
+
+    // ====== Finish Game & Rating ======
+    async function finishGame() {
+      const winner = scores[1]>scores[2]?1:2;
+      winnerMessage.textContent = `Player ${winner} wins!`;
+      // update leaderboard
+      const delta = (winner===myIndex+1)
+        ? (players.length===2 ? 8 : 14)
+        : -(players.length===2?8: players.length===4 ? (myIndex+1===winner?8: players.findIndex(p=>!p.isBot)!==winner-1?6:8) : 4);
+      // simple: win vs real +8, loss -8; bot +4/-4; 4-player: 1st+14,2nd+8,3rd-6,4th-8
+      await db.ref(`leaderboard/${players[myIndex].key}/points`)
+        .transaction(p=> (p||0) + delta);
+    }
+
+    // ====== Restart ======
+    restartBtn.addEventListener('click', ()=>location.reload());
+
+    // ====== launch ======
+    if (roomId) init();
+    else status.textContent = 'No room specified!';
+  </script>
+</body>
+    </html>
