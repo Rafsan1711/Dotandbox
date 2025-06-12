@@ -1,75 +1,132 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Dot & Box Game - Firebase</title>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js"></script>
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dots & Boxes Online - Home</title>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
   <style>
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', sans-serif;
-      background: #0d0d0d;
-      color: #fff;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      flex-direction: column;
-    }
-    .card {
-      background: #1e1e1e;
-      padding: 30px;
-      border-radius: 15px;
-      box-shadow: 0 0 20px rgba(255,255,255,0.05);
-      width: 90%;
-      max-width: 400px;
-      text-align: center;
-    }
-    button {
-      background: #2196f3;
-      color: white;
-      padding: 10px 20px;
-      margin: 10px 0;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-    }
-    input {
-      padding: 10px;
-      width: 100%;
-      margin: 10px 0;
-      border-radius: 5px;
-      border: none;
-    }
-    #userDisplay {
-      margin-bottom: 20px;
-      background: #333;
-      padding: 10px;
-      border-radius: 10px;
-    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Segoe UI',sans-serif;background:#1e1e2f;color:#e0e0e0;display:flex;flex-direction:column;min-height:100vh;position:relative;}
+
+    /* Login Overlay */
+    #loginOverlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:2000;}
+    #loginOverlay h2{color:#ff79c6;margin-bottom:1rem;font-size:1.8rem;}
+    .login-btn{padding:.75rem 1.5rem;margin:.5rem;border:none;border-radius:8px;font-size:1rem;font-weight:600;cursor:pointer;transition:transform .2s;}
+    .login-btn:hover{transform:translateY(-2px);}
+    .google-btn{background:#dd4b39;color:#fff;}
+    .guest-btn{background:#555;color:#fff;}
+
+    /* Header */
+    header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.5rem;background:#2a2a3d;border-bottom:1px solid #333;}
+    header h1{font-size:1.8rem;color:#ff79c6;}
+    #userBanner{background:#00bfff;color:#111;padding:.5rem 1rem;border-radius:8px;font-weight:600;}
+
+    /* Actions */
+    .actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;padding:2rem 1.5rem;max-width:600px;margin:0 auto;}
+    .btn{padding:1rem;border:none;border-radius:12px;font-size:1rem;font-weight:600;cursor:pointer;transition:transform .2s,box-shadow .2s;display:flex;align-items:center;justify-content:center;}
+    .btn:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,0.5);}
+    .play-online{background:#27ae60;color:#fff;}
+    .play-friends{background:#2980b9;color:#fff;}
+    .local-mp{background:#8e44ad;color:#fff;}
+
+    /* Leaderboard */
+    .leaderboard-card{background:#2a2a3d;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.5);padding:1.5rem;max-width:600px;margin:1rem auto;text-align:center;}
+    .leaderboard-card h3{margin-bottom:1rem;color:#ff79c6;font-size:1.25rem;}
+    .leaderboard-card .stat{font-size:1.1rem;margin:.5rem 0;}
+    .leaderboard-card .stat span{font-weight:700;color:#00bfff;}
+
+    /* Modals */
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;z-index:1000;}
+    .modal{background:#2a2a3d;color:#e0e0e0;border-radius:12px;width:90%;max-width:360px;padding:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.5);}
+    .modal h2{margin-bottom:1rem;font-size:1.3rem;color:#ff79c6;}
+    .modal .options{display:flex;flex-direction:column;gap:.75rem;margin-bottom:1rem;}
+    .modal label{display:flex;align-items:center;gap:.5rem;font-size:1rem;}
+    .modal .actions{display:flex;justify-content:flex-end;gap:.5rem;}
+    .modal button{padding:.5rem 1rem;border:none;border-radius:8px;font-weight:600;cursor:pointer;}
+    .cancel{background:#555;color:#fff;}
+    .confirm{background:#27ae60;color:#fff;}
+
+    /* Bottom Nav */
+    .bottom-nav{margin-top:auto;background:#2a2a3d;display:flex;justify-content:space-around;padding:.75rem 0;border-top:1px solid #333;}
+    .nav-item{text-decoration:none;color:#ccc;display:flex;flex-direction:column;align-items:center;font-size:.85rem;}
+    .nav-item img{width:24px;height:24px;margin-bottom:.25rem;}
+    .nav-item.active{color:#fff;}
+    @media(max-width:480px){.actions{grid-template-columns:1fr;}}
   </style>
 </head>
 <body>
 
-<div class="card" id="loginCard">
-  <h2>Dot & Box</h2>
-  <p>Sign in to play with others online</p>
-  <button onclick="signInWithGoogle()">Sign in with Google</button>
-  <button onclick="continueAsGuest()">Continue as Guest</button>
-</div>
+  <!-- Login -->
+  <div id="loginOverlay">
+    <h2>Welcome to Dots & Boxes</h2>
+    <button class="login-btn google-btn" id="btnSignIn">Sign in with Google</button>
+    <button class="login-btn guest-btn" id="btnGuest">Continue as Guest</button>
+  </div>
 
-<div class="card" id="homeScreen" style="display: none;">
-  <div id="userDisplay"></div>
-  <button onclick="createRoom()">Create Game</button>
-  <input type="text" id="roomIdInput" placeholder="Enter Room ID">
-  <button onclick="joinRoom()">Join Game</button>
-</div>
+  <!-- Header -->
+  <header>
+    <h1>Dots &amp; Boxes</h1>
+    <div id="userBanner">…</div>
+  </header>
 
-<script>
-  // 🔥 Your Firebase Config
+  <!-- Actions -->
+  <div class="actions">
+    <button class="btn play-online" id="btnPlayOnline">Play Online</button>
+    <button class="btn play-friends" id="btnPlayFriends">Play with Friends</button>
+    <button class="btn local-mp" id="btnLocalMP">Local Multiplayer</button>
+  </div>
+
+  <!-- Leaderboard -->
+  <div class="leaderboard-card" id="leaderboardCard">
+    <h3>Your Stats</h3>
+    <div class="stat">Points: <span id="yourPoints">—</span></div>
+    <div class="stat">Global Rank: <span id="yourRank">—</span></div>
+  </div>
+
+  <!-- Modals -->
+  <div class="modal-overlay" id="modalOverlay">
+    <!-- Play Online -->
+    <div class="modal" id="modalPlayOnline">
+      <h2>Play Online</h2>
+      <div class="options">
+        <label><input type="radio" name="onlineMode" value="2" checked /> 2 Players</label>
+        <label><input type="radio" name="onlineMode" value="4" /> 4 Players</label>
+      </div>
+      <div class="actions">
+        <button class="cancel" onclick="closeModal()">Cancel</button>
+        <button class="confirm" onclick="startMatchmaking()">Start</button>
+      </div>
+    </div>
+    <!-- Play with Friends -->
+    <div class="modal" id="modalPlayFriends" style="display:none;">
+      <h2>Play with Friends</h2>
+      <div class="options">
+        <div>Your slot: <strong id="yourNameSlot">…</strong></div>
+        <div>Slot 2: <em>Invite or Bot</em></div>
+        <div>Slot 3: <em>Invite or Bot</em></div>
+        <div>Slot 4: <em>Invite or Bot</em></div>
+      </div>
+      <div class="actions">
+        <button class="cancel" onclick="closeModal()">Cancel</button>
+        <button class="confirm" onclick="createFriendRoom()">Invite Link</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <nav class="bottom-nav">
+    <a href="index.html" class="nav-item active"><img src="home-icon.svg" alt="Home"/><span>Home</span></a>
+    <a href="leaderboard.html" class="nav-item"><img src="leaderboard-icon.svg" alt="Leaderboard"/><span>Leaderboard</span></a>
+    <a href="profile.html" class="nav-item"><img src="profile-icon.svg" alt="Profile"/><span>Profile</span></a>
+    <a href="settings.html" class="nav-item"><img src="settings-icon.svg" alt="Settings"/><span>Settings</span></a>
+  </nav>
+
+  <script>
+    // Firebase config (আপনার তথ্য)
 const firebaseConfig = {
   apiKey: "AIzaSyCuVAVqed3tw43XykpnKIq3gUmhbOQ8mfg",
   authDomain: "dot-and-box-6c3cb.firebaseapp.com",
@@ -78,75 +135,133 @@ const firebaseConfig = {
   messagingSenderId: "130733002450",
   appId: "1:130733002450:web:2fc8bee6aee8033577a70b"
 };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.database();
 
-  firebase.initializeApp(firebaseConfig);
-  const auth = firebase.auth();
-  const db = firebase.database();
+    // State
+    let isGuest = false;
+    let user = null;
+    let matchmakingTimeout;
 
-  let currentUser = {
-    uid: '',
-    name: '',
-    guest: false
-  };
+    // DOM
+    const loginOverlay = document.getElementById('loginOverlay');
+    const btnSignIn    = document.getElementById('btnSignIn');
+    const btnGuest     = document.getElementById('btnGuest');
+    const userBanner   = document.getElementById('userBanner');
+    const leaderboardCard = document.getElementById('leaderboardCard');
+    const yourPointsEl = document.getElementById('yourPoints');
+    const yourRankEl   = document.getElementById('yourRank');
+    const overlay      = document.getElementById('modalOverlay');
+    const modalOnline  = document.getElementById('modalPlayOnline');
+    const modalFriends = document.getElementById('modalPlayFriends');
+    const btnPlayOnline  = document.getElementById('btnPlayOnline');
+    const btnPlayFriends = document.getElementById('btnPlayFriends');
+    const btnLocalMP     = document.getElementById('btnLocalMP');
+    const yourNameSlot   = document.getElementById('yourNameSlot');
 
-  function signInWithGoogle() {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    auth.signInWithPopup(provider).then(result => {
-      const user = result.user;
-      currentUser.uid = user.uid;
-      currentUser.name = user.displayName;
-      currentUser.guest = false;
-      showHomeScreen();
-    });
-  }
+    // Login flows
+    btnGuest.onclick = () => {
+      isGuest = true;
+      userBanner.textContent = 'Guest';
+      loginOverlay.style.display = 'none';
+      leaderboardCard.style.display = 'none';
+    };
+    btnSignIn.onclick = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
 
-  function continueAsGuest() {
-    const guestId = 'guest_' + Math.random().toString(36).substr(2, 5);
-    currentUser.uid = guestId;
-    currentUser.name = 'Guest';
-    currentUser.guest = true;
-    showHomeScreen();
-  }
-
-  function showHomeScreen() {
-    document.getElementById("loginCard").style.display = "none";
-    document.getElementById("homeScreen").style.display = "block";
-    document.getElementById("userDisplay").innerText = `Logged in as: ${currentUser.name}`;
-  }
-
-  function createRoom() {
-    const roomId = Math.random().toString(36).substr(2, 6).toUpperCase();
-    const roomRef = db.ref('rooms/' + roomId);
-    roomRef.set({
-      player1: currentUser,
-      createdAt: Date.now()
-    }).then(() => {
-      alert("Room Created! Room ID: " + roomId);
-      // Later: redirect to game.html?room=ROOMID
-    });
-  }
-
-  function joinRoom() {
-    const roomId = document.getElementById("roomIdInput").value.trim().toUpperCase();
-    if (!roomId) return alert("Enter a valid Room ID");
-    const roomRef = db.ref('rooms/' + roomId);
-    roomRef.once('value').then(snapshot => {
-      if (snapshot.exists()) {
-        const roomData = snapshot.val();
-        if (!roomData.player2) {
-          roomRef.update({ player2: currentUser }).then(() => {
-            alert("Joined Room: " + roomId);
-            // Later: redirect to game.html?room=ROOMID
-          });
-        } else {
-          alert("Room already full.");
-        }
-      } else {
-        alert("Room not found.");
+    auth.onAuthStateChanged(u => {
+      if (u && !isGuest) {
+        user = u;
+        userBanner.textContent = u.displayName;
+        loginOverlay.style.display = 'none';
+        initLeaderboard(u.uid);
       }
     });
-  }
-</script>
 
+    // Leaderboard listener
+    function initLeaderboard(uid) {
+      db.ref('leaderboard').on('value', snap => {
+        const data = snap.val() || {};
+        const list = Object.entries(data)
+          .map(([id,o]) => ({ id, pts: o.points||0 }))
+          .sort((a,b)=>b.pts - a.pts);
+        const idx = list.findIndex(e=>e.id===uid);
+        yourPointsEl.textContent = idx>=0 ? list[idx].pts : '0';
+        yourRankEl.textContent = idx>=0 ? (idx+1) : '—';
+      });
+    }
+
+    // Modal handlers
+    btnPlayOnline.onclick  = ()=>{ overlay.style.display='flex'; modalOnline.style.display='block'; modalFriends.style.display='none'; };
+    btnPlayFriends.onclick = ()=>{ overlay.style.display='flex'; modalOnline.style.display='none'; modalFriends.style.display='block'; };
+    btnLocalMP.onclick     = ()=>{ window.location.href='local.html'; };
+    function closeModal(){ overlay.style.display='none'; clearTimeout(matchmakingTimeout); }
+
+    // Matchmaking
+    async function startMatchmaking() {
+      if (!user && !isGuest) return alert('Please sign in or continue as guest.');
+      const mode = +document.querySelector('input[name="onlineMode"]:checked').value;
+      // 1. খুঁজে দেখ existing room
+      const roomsSnap = await db.ref('rooms').once('value');
+      let roomId = null;
+      roomsSnap.forEach(ch => {
+        const r = ch.val();
+        const players = r.players || {};
+        if (r.mode===mode && Object.keys(players).length < mode) {
+          roomId = ch.key;
+          return true; // break
+        }
+      });
+      // 2. যদি না থাকে, নতুন রুম তৈরি
+      if (!roomId) {
+        const newRef = await db.ref('rooms').push({ mode, createdAt: Date.now() });
+        roomId = newRef.key;
+      }
+      const playerData = { name: user? user.displayName : 'Guest', isGuest, joinedAt: Date.now() };
+      const playerRef = db.ref(`rooms/${roomId}/players`).push();
+      await playerRef.set(playerData);
+      const myPlayerKey = playerRef.key;
+
+      // 3. Listen for players count
+      db.ref(`rooms/${roomId}/players`).on('value', snap=>{
+        const count = snap.numChildren();
+        if (count===mode) {
+          clearTimeout(matchmakingTimeout);
+          enterGame(roomId);
+        }
+      });
+      // 4. ১২ সেকেন্ডে না পেলে বট যোগ
+      matchmakingTimeout = setTimeout(async ()=>{
+        const snap = await db.ref(`rooms/${roomId}/players`).once('value');
+        const count = snap.numChildren();
+        for (let i=count; i<mode; i++) {
+          await db.ref(`rooms/${roomId}/players`).push({ name:'Bot', isGuest:true, isBot:true, joinedAt:Date.now() });
+        }
+        enterGame(roomId);
+      }, 12000);
+
+      closeModal();
+    }
+
+    // Play with Friends
+    async function createFriendRoom() {
+      if (!user && !isGuest) return alert('Please sign in or continue as guest.');
+      const mode = 4;
+      const newRef = await db.ref('rooms').push({ mode, createdAt: Date.now() });
+      const roomId = newRef.key;
+      await db.ref(`rooms/${roomId}/players`).push({
+        name: user? user.displayName : 'Guest',
+        isGuest, joinedAt: Date.now()
+      });
+      const link = `${location.origin}${location.pathname}?room=${roomId}`;
+      prompt('Invite link:', link);
+      closeModal();
+    }
+
+    function enterGame(roomId) {
+      // Game পেজে পাঠাবে roomId সহ
+      window.location.href = `game.html?room=${roomId}`;
+    }
+  </script>
 </body>
 </html>
