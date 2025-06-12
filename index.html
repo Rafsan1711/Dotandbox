@@ -1,239 +1,76 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Dots & Boxes Online - Home</title>
-  <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <meta charset="UTF-8">
+  <title>Dot & Box Game - Firebase</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
+      margin: 0;
       font-family: 'Segoe UI', sans-serif;
-      background: #1e1e2f;
-      color: #e0e0e0;
-      display: flex; flex-direction: column;
-      min-height: 100vh;
-      position: relative;
+      background: #0d0d0d;
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      flex-direction: column;
     }
-    /* --- Login Overlay --- */
-    #loginOverlay {
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.85);
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      z-index: 2000;
-    }
-    #loginOverlay h2 {
-      color: #ff79c6; margin-bottom: 1rem; font-size: 1.8rem;
-    }
-    .login-btn {
-      padding: .75rem 1.5rem; margin: .5rem;
-      border: none; border-radius: 8px;
-      font-size: 1rem; font-weight: 600;
-      cursor: pointer;
-      transition: transform .2s;
-    }
-    .login-btn:hover { transform: translateY(-2px); }
-    .google-btn { background: #dd4b39; color: #fff; }
-    .guest-btn  { background: #555;   color: #fff; }
-    /* --- Header & Username --- */
-    header {
-      display: flex; align-items: center;
-      justify-content: space-between;
-      padding: 1rem 1.5rem;
-      background: #2a2a3d;
-      border-bottom: 1px solid #333;
-    }
-    header h1 {
-      font-size: 1.8rem; color: #ff79c6;
-    }
-    #userBanner {
-      background: #00bfff;
-      color: #111;
-      padding: .5rem 1rem;
-      border-radius: 8px;
-      font-weight: 600;
-    }
-    /* --- Main Actions --- */
-    .actions {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 1rem;
-      padding: 2rem 1.5rem;
-      max-width: 600px;
-      margin: 0 auto;
-    }
-    .btn {
-      padding: 1rem;
-      border: none;
-      border-radius: 12px;
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: transform .2s, box-shadow .2s;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .btn:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 8px 20px rgba(0,0,0,0.5);
-    }
-    .play-online  { background: #27ae60; color: #fff; }
-    .play-friends { background: #2980b9; color: #fff; }
-    .local-mp     { background: #8e44ad; color: #fff; }
-    /* --- Leaderboard Card --- */
-    .leaderboard-card {
-      background: #2a2a3d;
-      border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-      padding: 1.5rem;
-      max-width: 600px;
-      margin: 1rem auto;
+    .card {
+      background: #1e1e1e;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 0 20px rgba(255,255,255,0.05);
+      width: 90%;
+      max-width: 400px;
       text-align: center;
     }
-    .leaderboard-card h3 {
-      margin-bottom: 1rem;
-      color: #ff79c6;
-      font-size: 1.25rem;
+    button {
+      background: #2196f3;
+      color: white;
+      padding: 10px 20px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
     }
-    .leaderboard-card .stat {
-      font-size: 1.1rem; margin: .5rem 0;
+    input {
+      padding: 10px;
+      width: 100%;
+      margin: 10px 0;
+      border-radius: 5px;
+      border: none;
     }
-    .leaderboard-card .stat span {
-      font-weight: 700; color: #00bfff;
-    }
-    /* --- Modals --- */
-    .modal-overlay {
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.7);
-      display: none; align-items: center; justify-content: center;
-      z-index: 1000;
-    }
-    .modal {
-      background: #2a2a3d;
-      color: #e0e0e0;
-      border-radius: 12px;
-      width: 90%; max-width: 360px;
-      padding: 1.5rem;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-    }
-    .modal h2 {
-      margin-bottom: 1rem;
-      font-size: 1.3rem; color: #ff79c6;
-    }
-    .modal .options {
-      display: flex; flex-direction: column; gap: .75rem;
-      margin-bottom: 1rem;
-    }
-    .modal label {
-      display: flex; align-items: center; gap: .5rem;
-      font-size: 1rem;
-    }
-    .modal .actions {
-      display: flex; justify-content: flex-end; gap: .5rem;
-    }
-    .modal button {
-      padding: .5rem 1rem;
-      border: none; border-radius: 8px;
-      font-weight: 600; cursor: pointer;
-    }
-    .cancel  { background: #555; color: #fff; }
-    .confirm { background: #27ae60; color: #fff; }
-    /* --- Bottom Navigation --- */
-    .bottom-nav {
-      margin-top: auto;
-      background: #2a2a3d;
-      display: flex; justify-content: space-around;
-      padding: .75rem 0;
-      border-top: 1px solid #333;
-    }
-    .nav-item {
-      text-decoration: none;
-      color: #ccc;
-      display: flex; flex-direction: column; align-items: center;
-      font-size: .85rem;
-    }
-    .nav-item img {
-      width: 24px; height: 24px; margin-bottom: .25rem;
-    }
-    .nav-item.active { color: #fff; }
-    @media (max-width: 480px) {
-      .actions { grid-template-columns: 1fr; }
+    #userDisplay {
+      margin-bottom: 20px;
+      background: #333;
+      padding: 10px;
+      border-radius: 10px;
     }
   </style>
 </head>
 <body>
 
-  <!-- Login Overlay -->
-  <div id="loginOverlay">
-    <h2>Welcome to Dots & Boxes</h2>
-    <button class="login-btn google-btn" id="btnSignIn">Sign in with Google</button>
-    <button class="login-btn guest-btn"  id="btnGuest">Continue as Guest</button>
-  </div>
+<div class="card" id="loginCard">
+  <h2>Dot & Box</h2>
+  <p>Sign in to play with others online</p>
+  <button onclick="signInWithGoogle()">Sign in with Google</button>
+  <button onclick="continueAsGuest()">Continue as Guest</button>
+</div>
 
-  <!-- Header with Username -->
-  <header>
-    <h1>Dots &amp; Boxes</h1>
-    <div id="userBanner">…</div>
-  </header>
+<div class="card" id="homeScreen" style="display: none;">
+  <div id="userDisplay"></div>
+  <button onclick="createRoom()">Create Game</button>
+  <input type="text" id="roomIdInput" placeholder="Enter Room ID">
+  <button onclick="joinRoom()">Join Game</button>
+</div>
 
-  <!-- Main Actions -->
-  <div class="actions">
-    <button class="btn play-online"      id="btnPlayOnline">Play Online</button>
-    <button class="btn play-friends"     id="btnPlayFriends">Play with Friends</button>
-    <button class="btn local-mp"         id="btnLocalMP">Local Multiplayer</button>
-  </div>
-
-  <!-- Leaderboard Card -->
-  <div class="leaderboard-card" id="leaderboardCard">
-    <h3>Your Stats</h3>
-    <div class="stat">Points: <span id="yourPoints">—</span></div>
-    <div class="stat">Global Rank: <span id="yourRank">—</span></div>
-  </div>
-
-  <!-- Modals -->
-  <div class="modal-overlay" id="modalOverlay">
-    <!-- Play Online -->
-    <div class="modal" id="modalPlayOnline">
-      <h2>Play Online</h2>
-      <div class="options">
-        <label><input type="radio" name="onlineMode" value="2" checked /> 2 Players</label>
-        <label><input type="radio" name="onlineMode" value="4" /> 4 Players</label>
-      </div>
-      <div class="actions">
-        <button class="cancel" onclick="closeModal()">Cancel</button>
-        <button class="confirm" onclick="startMatchmaking()">Start</button>
-      </div>
-    </div>
-    <!-- Play with Friends -->
-    <div class="modal" id="modalPlayFriends" style="display:none;">
-      <h2>Play with Friends</h2>
-      <div class="options">
-        <div>Your slot: <strong id="yourNameSlot">…</strong></div>
-        <div>Slot 2: <em>Invite or Bot</em></div>
-        <div>Slot 3: <em>Invite or Bot</em></div>
-        <div>Slot 4: <em>Invite or Bot</em></div>
-      </div>
-      <div class="actions">
-        <button class="cancel" onclick="closeModal()">Cancel</button>
-        <button class="confirm" onclick="createFriendRoom()">Invite Link</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Bottom Navigation -->
-  <nav class="bottom-nav">
-    <a href="index.html"       class="nav-item active"><img src="home-icon.svg"       alt="Home"       /><span>Home</span></a>
-    <a href="leaderboard.html" class="nav-item"><img src="leaderboard-icon.svg" alt="Leaderboard"/><span>Leaderboard</span></a>
-    <a href="profile.html"     class="nav-item"><img src="profile-icon.svg"     alt="Profile"    /><span>Profile</span></a>
-    <a href="settings.html"    class="nav-item"><img src="settings-icon.svg"    alt="Settings"   /><span>Settings</span></a>
-  </nav>
-
-  <script>
-    // Firebase config – আপনার তথ্য বসান
-    const firebaseConfig = {
+<script>
+  // 🔥 Your Firebase Config
+const firebaseConfig = {
   apiKey: "AIzaSyCuVAVqed3tw43XykpnKIq3gUmhbOQ8mfg",
   authDomain: "dot-and-box-6c3cb.firebaseapp.com",
   projectId: "dot-and-box-6c3cb",
@@ -241,77 +78,75 @@
   messagingSenderId: "130733002450",
   appId: "1:130733002450:web:2fc8bee6aee8033577a70b"
 };
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db   = firebase.database();
 
-    // স্টেট
-    let isGuest = false;
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.database();
 
-    // DOM এলিমেন্টস
-    const loginOverlay    = document.getElementById('loginOverlay');
-    const btnSignIn       = document.getElementById('btnSignIn');
-    const btnGuest        = document.getElementById('btnGuest');
-    const userBanner      = document.getElementById('userBanner');
-    const leaderboardCard = document.getElementById('leaderboardCard');
-    const yourPointsEl    = document.getElementById('yourPoints');
-    const yourRankEl      = document.getElementById('yourRank');
-    const overlay         = document.getElementById('modalOverlay');
-    const modalOnline     = document.getElementById('modalPlayOnline');
-    const modalFriends    = document.getElementById('modalPlayFriends');
-    const btnPlayOnline   = document.getElementById('btnPlayOnline');
-    const btnPlayFriends  = document.getElementById('btnPlayFriends');
-    const btnLocalMP      = document.getElementById('btnLocalMP');
-    const yourNameSlot    = document.getElementById('yourNameSlot');
+  let currentUser = {
+    uid: '',
+    name: '',
+    guest: false
+  };
 
-    // Guest বাটন
-    btnGuest.onclick = () => {
-      isGuest = true;
-      loginOverlay.style.display = 'none';
-      userBanner.textContent = 'Guest';
-      leaderboardCard.style.display = 'none';
-    };
+  function signInWithGoogle() {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider).then(result => {
+      const user = result.user;
+      currentUser.uid = user.uid;
+      currentUser.name = user.displayName;
+      currentUser.guest = false;
+      showHomeScreen();
+    });
+  }
 
-    // Google Sign-In
-    btnSignIn.onclick = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+  function continueAsGuest() {
+    const guestId = 'guest_' + Math.random().toString(36).substr(2, 5);
+    currentUser.uid = guestId;
+    currentUser.name = 'Guest';
+    currentUser.guest = true;
+    showHomeScreen();
+  }
 
-    auth.onAuthStateChanged(user => {
-      if (user && !isGuest) {
-        loginOverlay.style.display = 'none';
-        userBanner.textContent = user.displayName;
-        initLeaderboard(user.uid);
+  function showHomeScreen() {
+    document.getElementById("loginCard").style.display = "none";
+    document.getElementById("homeScreen").style.display = "block";
+    document.getElementById("userDisplay").innerText = `Logged in as: ${currentUser.name}`;
+  }
+
+  function createRoom() {
+    const roomId = Math.random().toString(36).substr(2, 6).toUpperCase();
+    const roomRef = db.ref('rooms/' + roomId);
+    roomRef.set({
+      player1: currentUser,
+      createdAt: Date.now()
+    }).then(() => {
+      alert("Room Created! Room ID: " + roomId);
+      // Later: redirect to game.html?room=ROOMID
+    });
+  }
+
+  function joinRoom() {
+    const roomId = document.getElementById("roomIdInput").value.trim().toUpperCase();
+    if (!roomId) return alert("Enter a valid Room ID");
+    const roomRef = db.ref('rooms/' + roomId);
+    roomRef.once('value').then(snapshot => {
+      if (snapshot.exists()) {
+        const roomData = snapshot.val();
+        if (!roomData.player2) {
+          roomRef.update({ player2: currentUser }).then(() => {
+            alert("Joined Room: " + roomId);
+            // Later: redirect to game.html?room=ROOMID
+          });
+        } else {
+          alert("Room already full.");
+        }
+      } else {
+        alert("Room not found.");
       }
     });
+  }
+</script>
 
-    // Leaderboard লিসেনার
-    function initLeaderboard(uid) {
-      db.ref('leaderboard').on('value', snap => {
-        const data = snap.val() || {};
-        const list = Object.entries(data)
-          .map(([id,obj])=>({id, pts: obj.points||0}))
-          .sort((a,b)=>b.pts - a.pts);
-        const idx = list.findIndex(e=>e.id===uid);
-        yourPointsEl.textContent = idx >= 0 ? list[idx].pts : '0';
-        yourRankEl.textContent   = idx >= 0 ? (idx+1) : '—';
-      });
-    }
-
-    // Modal হ্যান্ডলার
-    btnPlayOnline.onclick  = () => { overlay.style.display='flex'; modalOnline.style.display='block'; modalFriends.style.display='none'; };
-    btnPlayFriends.onclick = () => { overlay.style.display='flex'; modalOnline.style.display='none'; modalFriends.style.display='block'; };
-    btnLocalMP.onclick     = () => { window.location.href = 'local.html'; };
-    function closeModal()  { overlay.style.display='none'; }
-
-    // Matchmaking স্টাব
-    function startMatchmaking() {
-      const mode = document.querySelector('input[name="onlineMode"]:checked').value;
-      setTimeout(()=> console.log('১২ সেকেন্ডে কেউ না, বট আসবে'),12000);
-      closeModal();
-    }
-    function createFriendRoom() {
-      // Firebase room logic...
-      closeModal();
-    }
-  </script>
 </body>
-  </html>
+</html>
