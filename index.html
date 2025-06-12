@@ -1,17 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Dots & Boxes Online - Home</title>
-  <!-- Firebase SDKs -->
+  <title>Dots & Boxes Online</title>
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
     body{font-family:'Segoe UI',sans-serif;background:#1e1e2f;color:#e0e0e0;display:flex;flex-direction:column;min-height:100vh;position:relative;}
-
     /* Login Overlay */
     #loginOverlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:2000;}
     #loginOverlay h2{color:#ff79c6;margin-bottom:1rem;font-size:1.8rem;}
@@ -19,12 +18,10 @@
     .login-btn:hover{transform:translateY(-2px);}
     .google-btn{background:#dd4b39;color:#fff;}
     .guest-btn{background:#555;color:#fff;}
-
     /* Header */
     header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.5rem;background:#2a2a3d;border-bottom:1px solid #333;}
     header h1{font-size:1.8rem;color:#ff79c6;}
     #userBanner{background:#00bfff;color:#111;padding:.5rem 1rem;border-radius:8px;font-weight:600;}
-
     /* Actions */
     .actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;padding:2rem 1.5rem;max-width:600px;margin:0 auto;}
     .btn{padding:1rem;border:none;border-radius:12px;font-size:1rem;font-weight:600;cursor:pointer;transition:transform .2s,box-shadow .2s;display:flex;align-items:center;justify-content:center;}
@@ -32,24 +29,23 @@
     .play-online{background:#27ae60;color:#fff;}
     .play-friends{background:#2980b9;color:#fff;}
     .local-mp{background:#8e44ad;color:#fff;}
-
-    /* Leaderboard */
+    /* Rating Card */
     .leaderboard-card{background:#2a2a3d;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.5);padding:1.5rem;max-width:600px;margin:1rem auto;text-align:center;}
     .leaderboard-card h3{margin-bottom:1rem;color:#ff79c6;font-size:1.25rem;}
     .leaderboard-card .stat{font-size:1.1rem;margin:.5rem 0;}
     .leaderboard-card .stat span{font-weight:700;color:#00bfff;}
-
-    /* Modals */
-    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;z-index:1000;}
-    .modal{background:#2a2a3d;color:#e0e0e0;border-radius:12px;width:90%;max-width:360px;padding:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.5);}
-    .modal h2{margin-bottom:1rem;font-size:1.3rem;color:#ff79c6;}
+    /* Waiting Modal */
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;z-index:1000;}
+    .overlay.active{display:flex;}
+    .overlay .modal{background:#2a2a3d;color:#e0e0e0;border-radius:12px;padding:1.5rem;text-align:center;width:90%;max-width:360px;}
+    .spinner{margin:1rem auto;width:40px;height:40px;border:4px solid #444;border-top-color:#00bfff;border-radius:50%;animation:spin 1s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg);}}
     .modal .options{display:flex;flex-direction:column;gap:.75rem;margin-bottom:1rem;}
     .modal label{display:flex;align-items:center;gap:.5rem;font-size:1rem;}
     .modal .actions{display:flex;justify-content:flex-end;gap:.5rem;}
     .modal button{padding:.5rem 1rem;border:none;border-radius:8px;font-weight:600;cursor:pointer;}
     .cancel{background:#555;color:#fff;}
     .confirm{background:#27ae60;color:#fff;}
-
     /* Bottom Nav */
     .bottom-nav{margin-top:auto;background:#2a2a3d;display:flex;justify-content:space-around;padding:.75rem 0;border-top:1px solid #333;}
     .nav-item{text-decoration:none;color:#ccc;display:flex;flex-direction:column;align-items:center;font-size:.85rem;}
@@ -80,21 +76,28 @@
     <button class="btn local-mp" id="btnLocalMP">Local Multiplayer</button>
   </div>
 
-  <!-- Leaderboard -->
+  <!-- Rating -->
   <div class="leaderboard-card" id="leaderboardCard">
-    <h3>Your Stats</h3>
+    <h3>Your Rating</h3>
     <div class="stat">Points: <span id="yourPoints">—</span></div>
     <div class="stat">Global Rank: <span id="yourRank">—</span></div>
   </div>
 
-  <!-- Modals -->
-  <div class="modal-overlay" id="modalOverlay">
+  <!-- Overlays -->
+  <div class="overlay" id="waitingOverlay">
+    <div class="modal">
+      <h2>Waiting for other players…</h2>
+      <div class="spinner"></div>
+      <p>If no one joins in 12s, bots will fill remaining slots.</p>
+    </div>
+  </div>
+  <div class="overlay" id="modalOverlay">
     <!-- Play Online -->
     <div class="modal" id="modalPlayOnline">
       <h2>Play Online</h2>
       <div class="options">
-        <label><input type="radio" name="onlineMode" value="2" checked /> 2 Players</label>
-        <label><input type="radio" name="onlineMode" value="4" /> 4 Players</label>
+        <label><input type="radio" name="onlineMode" value="2" checked/> 2 Players</label>
+        <label><input type="radio" name="onlineMode" value="4"/> 4 Players</label>
       </div>
       <div class="actions">
         <button class="cancel" onclick="closeModal()">Cancel</button>
@@ -106,9 +109,9 @@
       <h2>Play with Friends</h2>
       <div class="options">
         <div>Your slot: <strong id="yourNameSlot">…</strong></div>
-        <div>Slot 2: <em>Invite or Bot</em></div>
-        <div>Slot 3: <em>Invite or Bot</em></div>
-        <div>Slot 4: <em>Invite or Bot</em></div>
+        <div>Slot 2: Invite or Bot</div>
+        <div>Slot 3: Invite or Bot</div>
+        <div>Slot 4: Invite or Bot</div>
       </div>
       <div class="actions">
         <button class="cancel" onclick="closeModal()">Cancel</button>
@@ -126,7 +129,7 @@
   </nav>
 
   <script>
-    // Firebase config (আপনার তথ্য)
+    // Firebase init
     const firebaseConfig = {
   apiKey: "AIzaSyCuVAVqed3tw43XykpnKIq3gUmhbOQ8mfg",
   authDomain: "dot-and-box-6c3cb.firebaseapp.com",
@@ -136,132 +139,108 @@
   appId: "1:130733002450:web:2fc8bee6aee8033577a70b"
 };
     firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.database();
+    const auth = firebase.auth(), db = firebase.database();
 
     // State
-    let isGuest = false;
-    let user = null;
-    let matchmakingTimeout;
+    let isGuest=false, user=null, mmTimeout;
 
     // DOM
-    const loginOverlay = document.getElementById('loginOverlay');
-    const btnSignIn    = document.getElementById('btnSignIn');
-    const btnGuest     = document.getElementById('btnGuest');
-    const userBanner   = document.getElementById('userBanner');
-    const leaderboardCard = document.getElementById('leaderboardCard');
-    const yourPointsEl = document.getElementById('yourPoints');
-    const yourRankEl   = document.getElementById('yourRank');
-    const overlay      = document.getElementById('modalOverlay');
-    const modalOnline  = document.getElementById('modalPlayOnline');
-    const modalFriends = document.getElementById('modalPlayFriends');
-    const btnPlayOnline  = document.getElementById('btnPlayOnline');
-    const btnPlayFriends = document.getElementById('btnPlayFriends');
-    const btnLocalMP     = document.getElementById('btnLocalMP');
-    const yourNameSlot   = document.getElementById('yourNameSlot');
+    const loginOv = document.getElementById('loginOverlay'),
+          btnSignIn= document.getElementById('btnSignIn'),
+          btnGuest = document.getElementById('btnGuest'),
+          userB    = document.getElementById('userBanner'),
+          lbCard   = document.getElementById('leaderboardCard'),
+          ptsEl    = document.getElementById('yourPoints'),
+          rankEl   = document.getElementById('yourRank'),
+          btnPO    = document.getElementById('btnPlayOnline'),
+          btnPF    = document.getElementById('btnPlayFriends'),
+          btnLM    = document.getElementById('btnLocalMP'),
+          nameSlot = document.getElementById('yourNameSlot'),
+          waitOv   = document.getElementById('waitingOverlay'),
+          modalOv  = document.getElementById('modalOverlay'),
+          modPO    = document.getElementById('modalPlayOnline'),
+          modPF    = document.getElementById('modalPlayFriends');
 
-    // Login flows
-    btnGuest.onclick = () => {
-      isGuest = true;
-      userBanner.textContent = 'Guest';
-      loginOverlay.style.display = 'none';
-      leaderboardCard.style.display = 'none';
+    // Login
+    btnGuest.onclick = ()=>{
+      isGuest=true; loginOv.style.display='none'; userB.textContent='Guest'; lbCard.style.display='none';
     };
-    btnSignIn.onclick = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
-
-    auth.onAuthStateChanged(u => {
-      if (u && !isGuest) {
-        user = u;
-        userBanner.textContent = u.displayName;
-        loginOverlay.style.display = 'none';
+    btnSignIn.onclick=()=> auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+    auth.onAuthStateChanged(u=>{
+      if(u && !isGuest){
+        user=u; loginOv.style.display='none'; userB.textContent=u.displayName;
         initLeaderboard(u.uid);
       }
     });
 
-    // Leaderboard listener
-    function initLeaderboard(uid) {
-      db.ref('leaderboard').on('value', snap => {
-        const data = snap.val() || {};
-        const list = Object.entries(data)
-          .map(([id,o]) => ({ id, pts: o.points||0 }))
-          .sort((a,b)=>b.pts - a.pts);
-        const idx = list.findIndex(e=>e.id===uid);
-        yourPointsEl.textContent = idx>=0 ? list[idx].pts : '0';
-        yourRankEl.textContent = idx>=0 ? (idx+1) : '—';
+    // Rating Listener
+    function initLeaderboard(uid){
+      db.ref('leaderboard').on('value',snap=>{
+        const data=snap.val()||{};
+        const arr=Object.entries(data).map(([k,o])=>({id:k,pts:o.points||0}))
+                     .sort((a,b)=>b.pts-a.pts);
+        const idx=arr.findIndex(e=>e.id===uid);
+        ptsEl.textContent=idx>=0?arr[idx].pts:'0';
+        rankEl.textContent=idx>=0?idx+1:'—';
       });
     }
 
-    // Modal handlers
-    btnPlayOnline.onclick  = ()=>{ overlay.style.display='flex'; modalOnline.style.display='block'; modalFriends.style.display='none'; };
-    btnPlayFriends.onclick = ()=>{ overlay.style.display='flex'; modalOnline.style.display='none'; modalFriends.style.display='block'; };
-    btnLocalMP.onclick     = ()=>{ window.location.href='local.html'; };
-    function closeModal(){ overlay.style.display='none'; clearTimeout(matchmakingTimeout); }
+    // Modals
+    btnPO.onclick=()=>{ modalOv.classList.add('active'); modPO.style.display='block'; modPF.style.display='none'; };
+    btnPF.onclick=()=>{ modalOv.classList.add('active'); modPO.style.display='none'; modPF.style.display='block'; };
+    btnLM.onclick=()=>{ window.location='local.html'; };
+    function closeModal(){ modalOv.classList.remove('active'); clearTimeout(mmTimeout); }
 
     // Matchmaking
-    async function startMatchmaking() {
-      if (!user && !isGuest) return alert('Please sign in or continue as guest.');
-      const mode = +document.querySelector('input[name="onlineMode"]:checked').value;
-      // 1. খুঁজে দেখ existing room
-      const roomsSnap = await db.ref('rooms').once('value');
-      let roomId = null;
-      roomsSnap.forEach(ch => {
-        const r = ch.val();
-        const players = r.players || {};
-        if (r.mode===mode && Object.keys(players).length < mode) {
-          roomId = ch.key;
-          return true; // break
-        }
-      });
-      // 2. যদি না থাকে, নতুন রুম তৈরি
-      if (!roomId) {
-        const newRef = await db.ref('rooms').push({ mode, createdAt: Date.now() });
-        roomId = newRef.key;
-      }
-      const playerData = { name: user? user.displayName : 'Guest', isGuest, joinedAt: Date.now() };
-      const playerRef = db.ref(`rooms/${roomId}/players`).push();
-      await playerRef.set(playerData);
-      const myPlayerKey = playerRef.key;
+    async function startMatchmaking(){
+      if(!user && !isGuest) return alert('Sign in or Guest first');
+      const mode=+document.querySelector('input[name="onlineMode"]:checked').value;
+      modalOv.classList.remove('active'); waitOv.classList.add('active');
 
-      // 3. Listen for players count
-      db.ref(`rooms/${roomId}/players`).on('value', snap=>{
-        const count = snap.numChildren();
-        if (count===mode) {
-          clearTimeout(matchmakingTimeout);
-          enterGame(roomId);
-        }
+      // find/create room
+      const rooms=await db.ref('rooms').once('value');
+      let roomId=null;
+      rooms.forEach(ch=>{
+        const r=ch.val();
+        if(r.mode===mode && (!r.players||Object.keys(r.players).length<mode)){ roomId=ch.key; return true; }
       });
-      // 4. ১২ সেকেন্ডে না পেলে বট যোগ
-      matchmakingTimeout = setTimeout(async ()=>{
-        const snap = await db.ref(`rooms/${roomId}/players`).once('value');
-        const count = snap.numChildren();
-        for (let i=count; i<mode; i++) {
-          await db.ref(`rooms/${roomId}/players`).push({ name:'Bot', isGuest:true, isBot:true, joinedAt:Date.now() });
+      if(!roomId){
+        const newR=await db.ref('rooms').push({mode,createdAt:Date.now()});
+        roomId=newR.key;
+      }
+      // join
+      const pr=await db.ref(`rooms/${roomId}/players`).push();
+      await pr.set({name:user?user.displayName:'Guest',isGuest});
+      nameSlot.textContent = user?user.displayName:'Guest';
+
+      // wait others
+      db.ref(`rooms/${roomId}/players`).on('value',snap=>{
+        if(snap.numChildren()===mode) enterGame(roomId);
+      });
+      mmTimeout=setTimeout(async ()=>{
+        const snap=await db.ref(`rooms/${roomId}/players`).once('value');
+        const ct=snap.numChildren();
+        for(let i=ct;i<mode;i++){
+          await db.ref(`rooms/${roomId}/players`).push({name:'Bot',isGuest:true,isBot:true});
         }
         enterGame(roomId);
-      }, 12000);
-
-      closeModal();
+      },12000);
     }
 
-    // Play with Friends
-    async function createFriendRoom() {
-      if (!user && !isGuest) return alert('Please sign in or continue as guest.');
-      const mode = 4;
-      const newRef = await db.ref('rooms').push({ mode, createdAt: Date.now() });
-      const roomId = newRef.key;
-      await db.ref(`rooms/${roomId}/players`).push({
-        name: user? user.displayName : 'Guest',
-        isGuest, joinedAt: Date.now()
-      });
-      const link = `${location.origin}${location.pathname}?room=${roomId}`;
-      prompt('Invite link:', link);
-      closeModal();
+    // Invite friends
+    async function createFriendRoom(){
+      if(!user && !isGuest) return alert('Sign in or Guest first');
+      modalOv.classList.remove('active');
+      const newR=await db.ref('rooms').push({mode:4,createdAt:Date.now()});
+      const roomId=newR.key;
+      await db.ref(`rooms/${roomId}/players`).push({name:user?user.displayName:'Guest',isGuest});
+      prompt('Invite link:',`${location.origin}${location.pathname}?room=${roomId}`);
     }
 
-    function enterGame(roomId) {
-      // Game পেজে পাঠাবে roomId সহ
-      window.location.href = `game.html?room=${roomId}`;
+    function enterGame(roomId){
+      waitOv.classList.remove('active');
+      window.location=`game.html?room=${roomId}`;
     }
   </script>
 </body>
-</html>
+  </html>
